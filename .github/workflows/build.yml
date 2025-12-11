@@ -1,0 +1,13 @@
+name: Build APK
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: ArtemSBulgakov/buildozer-action@v1
+      id: buildozer
+    - uses: actions/upload-artifact@v2
+      with:
+        name: apk
+        path: ${{steps.buildozer.outputs.apk}}
