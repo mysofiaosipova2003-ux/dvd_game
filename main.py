@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 from kivy.app import App
 from kivy.uix.widget import Widget
 from kivy.uix.floatlayout import FloatLayout
@@ -12,7 +11,7 @@ import json
 import os
 from datetime import datetime
 
-# Константы
+# Константы (фиксированные пиксели)
 CANVAS_WIDTH = 600
 CANVAS_HEIGHT = 450
 BOX_SIZE = 40
@@ -22,39 +21,41 @@ UPDATE_INTERVAL = 1/60  # 60 FPS
 
 # Цвета (в формате 0-1)
 COLORS = [
-    (220/255, 38/255, 38/255, 1),    # red
-    (251/255, 191/255, 36/255, 1),   # yellow
-    (22/255, 163/255, 74/255, 1),    # green
-    (37/255, 99/255, 235/255, 1)     # blue
+    (1, 0, 0, 1),      # Красный
+    (0, 1, 0, 1),      # Зеленый
+    (0, 0, 1, 1),      # Синий
+    (1, 1, 0, 1),      # Желтый
+    (1, 0, 1, 1),      # Пурпурный
+    (0, 1, 1, 1),      # Циан
+    (1, 0.5, 0, 1),    # Оранжевый
 ]
 
-WHITE = (1, 1, 1, 1)
-GRAY_DARK = (87/255, 83/255, 78/255, 1)
+BG_CANVAS = (0.1, 0.1, 0.1, 1)
+LINE_COLOR = (0.2, 0.2, 0.2, 1)
+BORDER_COLOR = (1, 1, 1, 1)
+DANGER_RED = (1, 0, 0, 0.3)
+DANGER_GRAY = (0.5, 0.5, 0.5, 0.2)
+
+# Цвета UI
 AMBER_BG = (254/255, 243/255, 199/255, 1)
-BG_CANVAS = (214/255, 199/255, 168/255, 1)
-LINE_COLOR = (120/255, 100/255, 80/255, 0.078)
-BORDER_COLOR = (0, 0, 0, 0.3)
-DANGER_RED = (153/255, 27/255, 27/255, 0.25)
-DANGER_GRAY = (80/255, 70/255, 60/255, 0.078)
-TV_FRAME_COLOR = (40/255, 40/255, 40/255, 1)
-TV_SCREEN_COLOR = (20/255, 20/255, 20/255, 1)
+GRAY_DARK = (74/255, 74/255, 74/255, 1)
+WHITE = (1, 1, 1, 1)
+TV_FRAME_COLOR = (0.2, 0.2, 0.2, 1)
+TV_SCREEN_COLOR = (0.15, 0.15, 0.15, 1)
 
-# Персонажи
+# Персонажи (The Office)
 CHARACTERS = [
-    'Майкл Скотт',
-    'Джим Халперт',
-    'Пэм Бизли',
-    'Дуайт Шрут',
-    'Райан Говард',
-    'Энди Бернард',
-    'Анжела Мартин',
-    'Кевин Мэлоун'
+    "Майкл Скотт",
+    "Дуайт Шрут",
+    "Джим Халперт",
+    "Пэм Бисли",
+    "Райан Ховард",
+    "Энди Бернард",
+    "Кевин Малоун",
+    "Анджела Мартин"
 ]
-
 
 class GameView(Widget):
-    """Игровое поле с Canvas рисованием"""
-    
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         
@@ -78,7 +79,7 @@ class GameView(Widget):
         """Старт игры"""
         self.playing = True
         self.paused = False
-        self.start_time = Clock.get_time()
+        self.start_time = datetime.now()
         self.current_score = 0
         
         # Случайное направление
@@ -93,29 +94,31 @@ class GameView(Widget):
         self.box_color_index = random.randint(0, len(COLORS) - 1)
         
         # Запуск game loop
-        if self.game_loop_event:
-            self.game_loop_event.cancel()
-        self.game_loop_event = Clock.schedule_interval(self.update, UPDATE_INTERVAL)
+        self.game_loop_event = Clock.schedule_interval(self.update_game, UPDATE_INTERVAL)
+        
+        self.render()
+    
+    def pause(self):
+        """Пауза"""
+        self.paused = not self.paused
     
     def stop(self):
-        """Остановка игры"""
+        """Стоп игры"""
         self.playing = False
         self.paused = False
         if self.game_loop_event:
             self.game_loop_event.cancel()
             self.game_loop_event = None
     
-    def pause(self):
-        """Пауза"""
-        self.paused = True
+    def get_score(self):
+        """Получить текущий счет (секунды)"""
+        if not self.playing:
+            return self.current_score
+        elapsed = (datetime.now() - self.start_time).total_seconds()
+        return elapsed
     
-    def resume(self):
-        """Продолжить"""
-        self.paused = False
-        self.start_time = Clock.get_time() - self.current_score
-    
-    def is_playing(self):
-        """Играет ли сейчас"""
+    def is_running(self):
+        """Проверка, идет ли игра"""
         return self.playing and not self.paused
     
     def check_corner_collision(self):
@@ -140,8 +143,8 @@ class GameView(Widget):
         
         return False
     
-    def update(self, dt):
-        """Обновление каждый кадр"""
+    def update_game(self, dt):
+        """Обновление состояния игры"""
         if not self.playing:
             return
         
@@ -167,24 +170,19 @@ class GameView(Widget):
             
             # Проверка столкновения с углами
             if self.check_corner_collision():
-                self.playing = False
-                if self.game_loop_event:
-                    self.game_loop_event.cancel()
-                    self.game_loop_event = None
-                # Вызов game over
-                if hasattr(self.parent.parent, 'on_game_over'):
-                    self.parent.parent.on_game_over(self.current_score)
+                self.current_score = self.get_score()
+                self.stop()
+                App.get_running_app().game_over(self.current_score)
                 return
-            
-            # Обновление счета
-            self.current_score = int(Clock.get_time() - self.start_time)
-            if hasattr(self.parent.parent, 'update_score'):
-                self.parent.parent.update_score(self.current_score)
         
-        # Перерисовка
-        self.draw_game()
+        # Обновить счет
+        score = self.get_score()
+        App.get_running_app().update_score(score)
+        
+        # Отрисовка
+        self.render()
     
-    def draw_game(self):
+    def render(self):
         """Отрисовка игры"""
         if not self.playing and self.current_score == 0:
             return
@@ -265,8 +263,8 @@ class GameView(Widget):
             )
     
     def on_touch_down(self, touch):
-        """Обработка тапов"""
-        if not self.is_playing():
+        """Обработка нажатий на квадрат"""
+        if not self.playing or self.paused:
             return False
         
         if not self.collide_point(*touch.pos):
@@ -285,96 +283,67 @@ class GameView(Widget):
             speed = math.sqrt(self.velocity_x ** 2 + self.velocity_y ** 2)
             self.velocity_x = math.cos(angle) * speed
             self.velocity_y = math.sin(angle) * speed
+            
             return True
         
         return False
 
-
-class DVDGameApp(App):
-    """Главное приложение"""
-    
-    SAVE_FILE = 'player_data.json'
-    
+class DVDScreensaverApp(App):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.player_data = self.load_player_data()
         self.root_layout = None
         self.game_view = None
-        
-        # UI элементы
+        self.player_data = self.load_player_data()
         self.score_label_texture = None
         self.best_label_texture = None
-        
-    def build(self):
-        """Построение UI"""
-        Window.clearcolor = AMBER_BG
-        
-        self.root_layout = FloatLayout()
-        
-        # Показываем меню
-        self.show_menu()
-        
-        return self.root_layout
+        self.score_rect = None
+        self.best_rect = None
     
     def load_player_data(self):
         """Загрузка данных игрока"""
-        default_data = {
+        if os.path.exists('player_data.json'):
+            try:
+                with open('player_data.json', 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except:
+                pass
+        
+        return {
             'name': 'Майкл Скотт',
             'best_score': 0,
             'games_played': 0,
             'total_time': 0,
             'sound_enabled': True,
-            'speed': 'Нормальная',
+            'speed': 1,
             'records': []
         }
-        
-        if os.path.exists(self.SAVE_FILE):
-            try:
-                with open(self.SAVE_FILE, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    return {**default_data, **data}
-            except:
-                return default_data
-        return default_data
     
     def save_player_data(self):
         """Сохранение данных игрока"""
         try:
-            with open(self.SAVE_FILE, 'w', encoding='utf-8') as f:
+            with open('player_data.json', 'w', encoding='utf-8') as f:
                 json.dump(self.player_data, f, ensure_ascii=False, indent=2)
-        except:
-            pass
+        except Exception as e:
+            print(f"Ошибка сохранения: {e}")
     
     def format_time(self, seconds):
         """Форматирование времени"""
-        mins = seconds // 60
-        secs = seconds % 60
-        return f"{mins}:{secs:02d}"
+        minutes = int(seconds // 60)
+        secs = int(seconds % 60)
+        return f"{minutes}:{secs:02d}"
     
-    def show_menu(self):
-        """Показать меню"""
-        self.root_layout.clear_widgets()
+    def build(self):
+        """Построение интерфейса"""
+        self.root_layout = FloatLayout()
+        Window.clearcolor = AMBER_BG
         
-        menu_widget = Widget()
+        # Показать меню
+        self.show_menu()
         
-        with menu_widget.canvas:
-            # Фон
-            Color(*AMBER_BG)
-            Rectangle(pos=(0, 0), size=Window.size)
-        
-        # Создаем текстовые элементы
-        self.draw_menu_text(menu_widget)
-        
-        # Блоки профиль/рекорд/настройки
-        self.create_info_blocks(menu_widget)
-        
-        # Кнопка старта
-        self.create_start_button(menu_widget)
-        
-        self.root_layout.add_widget(menu_widget)
-        
-        # Обновление при изменении размера окна
+        # Обработка изменения размера окна
         Window.bind(on_resize=lambda *args: self.show_menu())
+        
+        return self.root_layout
     
     def draw_menu_text(self, widget):
         """Отрисовка текста меню"""
@@ -440,7 +409,7 @@ class DVDGameApp(App):
             Color(*GRAY_DARK)
             Rectangle(
                 texture=profile_texture,
-                pos=(profile_x + block_width/2 - profile_texture.width/2, 
+                pos=(profile_x + block_width/2 - profile_texture.width/2,
                      start_y + block_height/2 - profile_texture.height/2),
                 size=profile_texture.size
             )
@@ -468,7 +437,7 @@ class DVDGameApp(App):
             Color(*GRAY_DARK)
             Rectangle(
                 texture=record_texture,
-                pos=(record_x + block_width/2 - record_texture.width/2, 
+                pos=(record_x + block_width/2 - record_texture.width/2,
                      start_y + block_height/2 - record_texture.height/2),
                 size=record_texture.size
             )
@@ -493,42 +462,39 @@ class DVDGameApp(App):
             Color(*GRAY_DARK)
             Rectangle(
                 texture=settings_texture,
-                pos=(settings_x + block_width/2 - settings_texture.width/2, 
+                pos=(settings_x + block_width/2 - settings_texture.width/2,
                      start_y + block_height/2 - settings_texture.height/2),
                 size=settings_texture.size
             )
-        
-        # Обработчики кликов на блоки
-        def on_touch_down(instance, touch):
-            # Профиль
-            if (profile_x <= touch.pos[0] <= profile_x + block_width and
-                start_y <= touch.pos[1] <= start_y + block_height):
-                self.show_profile_screen()
-                return True
-            
-            # Рекорд
-            if (record_x <= touch.pos[0] <= record_x + block_width and
-                start_y <= touch.pos[1] <= start_y + block_height):
-                self.show_records_screen()
-                return True
-            
-            # Настройки
-            if (settings_x <= touch.pos[0] <= settings_x + block_width and
-                start_y <= touch.pos[1] <= start_y + block_height):
-                self.show_settings_screen()
-                return True
-            
-            return False
-        
-        widget.bind(on_touch_down=on_touch_down)
     
-    def show_profile_screen(self):
+    def show_menu(self):
+        """Показать главное меню"""
+        self.root_layout.clear_widgets()
+        
+        menu_widget = Widget()
+        
+        with menu_widget.canvas.before:
+            Color(*AMBER_BG)
+            Rectangle(pos=(0, 0), size=Window.size)
+        
+        # Текст меню
+        self.draw_menu_text(menu_widget)
+        
+        # Информационные блоки
+        self.create_info_blocks(menu_widget)
+        
+        # Кнопка старта
+        self.create_start_button(menu_widget)
+        
+        self.root_layout.add_widget(menu_widget)
+    
+    def show_profile_selection(self):
         """Экран выбора персонажа"""
         self.root_layout.clear_widgets()
         
         profile_widget = Widget()
         
-        with profile_widget.canvas:
+        with profile_widget.canvas.before:
             Color(*AMBER_BG)
             Rectangle(pos=(0, 0), size=Window.size)
         
@@ -559,13 +525,13 @@ class DVDGameApp(App):
             char_x = start_x + col * (char_width + spacing)
             char_y = start_y - row * (char_height + spacing)
             
-            # Выделяем текущего персонажа
-            if character == self.player_data['name']:
+            # Проверка выбранного персонажа
+            is_selected = self.player_data['name'] == character
+            
+            if is_selected:
                 bg_color = GRAY_DARK
-                text_color = WHITE
             else:
                 bg_color = WHITE
-                text_color = GRAY_DARK
             
             with profile_widget.canvas:
                 Color(*bg_color)
@@ -580,7 +546,7 @@ class DVDGameApp(App):
             char_texture = char_label.texture
             
             with profile_widget.canvas:
-                Color(*text_color)
+                Color(1, 1, 1, 1) if is_selected else Color(*GRAY_DARK)
                 Rectangle(
                     texture=char_texture,
                     pos=(char_x + char_width/2 - char_texture.width/2,
@@ -591,34 +557,15 @@ class DVDGameApp(App):
         # Кнопка назад
         self.create_back_button(profile_widget)
         
-        # Обработчик кликов на персонажей
-        def on_character_select(instance, touch):
-            for i, character in enumerate(CHARACTERS):
-                col = i % 2
-                row = i // 2
-                
-                char_x = start_x + col * (char_width + spacing)
-                char_y = start_y - row * (char_height + spacing)
-                
-                if (char_x <= touch.pos[0] <= char_x + char_width and
-                    char_y <= touch.pos[1] <= char_y + char_height):
-                    self.player_data['name'] = character
-                    self.save_player_data()
-                    self.show_profile_screen()
-                    return True
-            return False
-        
-        profile_widget.bind(on_touch_down=on_character_select)
-        
         self.root_layout.add_widget(profile_widget)
     
-    def show_settings_screen(self):
+    def show_settings(self):
         """Экран настроек"""
         self.root_layout.clear_widgets()
         
         settings_widget = Widget()
         
-        with settings_widget.canvas:
+        with settings_widget.canvas.before:
             Color(*AMBER_BG)
             Rectangle(pos=(0, 0), size=Window.size)
         
@@ -658,7 +605,6 @@ class DVDGameApp(App):
         # Кнопка ВКЛ
         on_btn_x = Window.width/2 - btn_width - btn_spacing/2
         on_bg_color = GRAY_DARK if self.player_data['sound_enabled'] else WHITE
-        on_text_color = WHITE if self.player_data['sound_enabled'] else GRAY_DARK
         
         with settings_widget.canvas:
             Color(*on_bg_color)
@@ -673,7 +619,7 @@ class DVDGameApp(App):
         on_texture = on_label.texture
         
         with settings_widget.canvas:
-            Color(*on_text_color)
+            Color(1, 1, 1, 1) if self.player_data['sound_enabled'] else Color(*GRAY_DARK)
             Rectangle(
                 texture=on_texture,
                 pos=(on_btn_x + btn_width/2 - on_texture.width/2,
@@ -684,7 +630,6 @@ class DVDGameApp(App):
         # Кнопка ВЫКЛ
         off_btn_x = Window.width/2 + btn_spacing/2
         off_bg_color = GRAY_DARK if not self.player_data['sound_enabled'] else WHITE
-        off_text_color = WHITE if not self.player_data['sound_enabled'] else GRAY_DARK
         
         with settings_widget.canvas:
             Color(*off_bg_color)
@@ -699,7 +644,7 @@ class DVDGameApp(App):
         off_texture = off_label.texture
         
         with settings_widget.canvas:
-            Color(*off_text_color)
+            Color(1, 1, 1, 1) if not self.player_data['sound_enabled'] else Color(*GRAY_DARK)
             Rectangle(
                 texture=off_texture,
                 pos=(off_btn_x + btn_width/2 - off_texture.width/2,
@@ -710,35 +655,15 @@ class DVDGameApp(App):
         # Кнопка назад
         self.create_back_button(settings_widget)
         
-        # Обработчик кликов
-        def on_sound_toggle(instance, touch):
-            if (on_btn_x <= touch.pos[0] <= on_btn_x + btn_width and
-                btn_y <= touch.pos[1] <= btn_y + btn_height):
-                self.player_data['sound_enabled'] = True
-                self.save_player_data()
-                self.show_settings_screen()
-                return True
-            
-            if (off_btn_x <= touch.pos[0] <= off_btn_x + btn_width and
-                btn_y <= touch.pos[1] <= btn_y + btn_height):
-                self.player_data['sound_enabled'] = False
-                self.save_player_data()
-                self.show_settings_screen()
-                return True
-            
-            return False
-        
-        settings_widget.bind(on_touch_down=on_sound_toggle)
-        
         self.root_layout.add_widget(settings_widget)
     
-    def show_records_screen(self):
+    def show_records(self):
         """Экран таблицы рекордов"""
         self.root_layout.clear_widgets()
         
         records_widget = Widget()
         
-        with records_widget.canvas:
+        with records_widget.canvas.before:
             Color(*AMBER_BG)
             Rectangle(pos=(0, 0), size=Window.size)
         
@@ -834,9 +759,9 @@ class DVDGameApp(App):
                 size=btn_texture.size
             )
         
-        def on_back_click(instance, touch):
-            if (btn_x <= touch.pos[0] <= btn_x + btn_width and
-                btn_y <= touch.pos[1] <= btn_y + btn_height):
+        def on_back_click(w, touch):
+            if btn_x <= touch.pos[0] <= btn_x + btn_width and \
+               btn_y <= touch.pos[1] <= btn_y + btn_height:
                 self.show_menu()
                 return True
             return False
@@ -864,14 +789,14 @@ class DVDGameApp(App):
             Color(1, 1, 1, 1)
             Rectangle(
                 texture=btn_texture,
-                pos=(Window.width/2 - btn_texture.width/2, btn_y + btn_height/2 - btn_texture.height/2),
+                pos=(btn_x + btn_width/2 - btn_texture.width/2,
+                     btn_y + btn_height/2 - btn_texture.height/2),
                 size=btn_texture.size
             )
         
-        # Обработчик клика
-        def on_touch_down(instance, touch):
-            if (btn_x <= touch.pos[0] <= btn_x + btn_width and
-                btn_y <= touch.pos[1] <= btn_y + btn_height):
+        def on_touch_down(w, touch):
+            if btn_x <= touch.pos[0] <= btn_x + btn_width and \
+               btn_y <= touch.pos[1] <= btn_y + btn_height:
                 self.start_game()
                 return True
             return False
@@ -886,7 +811,7 @@ class DVDGameApp(App):
         
         # Фон
         game_bg = Widget()
-        with game_bg.canvas:
+        with game_bg.canvas.before:
             Color(*AMBER_BG)
             Rectangle(pos=(0, 0), size=Window.size)
         game_container.add_widget(game_bg)
@@ -935,6 +860,7 @@ class DVDGameApp(App):
         
         # UI элементы
         self.create_game_ui(game_container)
+        self.create_game_buttons(game_container)
         
         self.root_layout.add_widget(game_container)
         
@@ -973,8 +899,8 @@ class DVDGameApp(App):
             )
         container.add_widget(best_widget)
         
-        # Кнопки внизу
-        self.create_game_buttons(container)
+        # Подсказка внизу (опционально)
+        pass
     
     def create_game_buttons(self, container):
         """Создание кнопок паузы и выхода"""
@@ -998,15 +924,15 @@ class DVDGameApp(App):
             Color(*GRAY_DARK)
             Rectangle(
                 texture=pause_texture,
-                pos=(pause_btn_x + pause_btn_width/2 - pause_texture.width/2, 
+                pos=(pause_btn_x + pause_btn_width/2 - pause_texture.width/2,
                      pause_btn_y + pause_btn_height/2 - pause_texture.height/2),
                 size=pause_texture.size
             )
         
-        def on_pause_touch(instance, touch):
-            if (pause_btn_x <= touch.pos[0] <= pause_btn_x + pause_btn_width and
-                pause_btn_y <= touch.pos[1] <= pause_btn_y + pause_btn_height):
-                self.pause_game()
+        def on_pause_touch(w, touch):
+            if pause_btn_x <= touch.pos[0] <= pause_btn_x + pause_btn_width and \
+               pause_btn_y <= touch.pos[1] <= pause_btn_y + pause_btn_height:
+                self.game_view.pause()
                 return True
             return False
         
@@ -1033,30 +959,23 @@ class DVDGameApp(App):
             Color(*GRAY_DARK)
             Rectangle(
                 texture=exit_texture,
-                pos=(exit_btn_x + exit_btn_width/2 - exit_texture.width/2, 
+                pos=(exit_btn_x + exit_btn_width/2 - exit_texture.width/2,
                      exit_btn_y + exit_btn_height/2 - exit_texture.height/2),
                 size=exit_texture.size
             )
         
-        def on_exit_touch(instance, touch):
-            if (exit_btn_x <= touch.pos[0] <= exit_btn_x + exit_btn_width and
-                exit_btn_y <= touch.pos[1] <= exit_btn_y + exit_btn_height):
-                self.exit_to_menu()
+        def on_exit_touch(w, touch):
+            if exit_btn_x <= touch.pos[0] <= exit_btn_x + exit_btn_width and \
+               exit_btn_y <= touch.pos[1] <= exit_btn_y + exit_btn_height:
+                self.exit_game()
                 return True
             return False
         
         exit_widget.bind(on_touch_down=on_exit_touch)
         container.add_widget(exit_widget)
     
-    def pause_game(self):
-        """Пауза игры"""
-        if self.game_view and self.game_view.is_playing():
-            self.game_view.pause()
-        elif self.game_view and self.game_view.paused:
-            self.game_view.resume()
-    
-    def exit_to_menu(self):
-        """Выход в меню"""
+    def exit_game(self):
+        """Выход из игры"""
         if self.game_view:
             self.game_view.stop()
         self.show_menu()
@@ -1069,38 +988,41 @@ class DVDGameApp(App):
         self.score_rect.texture = self.score_label_texture
         self.score_rect.size = self.score_label_texture.size
     
-    def on_game_over(self, score):
-        """Game Over"""
-        # Обновляем статистику
+    def game_over(self, score):
+        """Окончание игры"""
+        # Обновить статистику
         self.player_data['games_played'] += 1
         self.player_data['total_time'] += score
         
         if score > self.player_data['best_score']:
             self.player_data['best_score'] = score
         
-        # Добавляем запись в таблицу рекордов
+        # Добавить в таблицу рекордов
         record = {
             'name': self.player_data['name'],
             'score': score,
-            'date': datetime.now().strftime('%d.%m.%Y')
+            'date': datetime.now().strftime('%Y-%m-%d')
         }
         
-        records = self.player_data.get('records', [])
-        records.append(record)
-        records.sort(key=lambda x: x['score'], reverse=True)
-        self.player_data['records'] = records[:50]  # Храним топ-50
+        if 'records' not in self.player_data:
+            self.player_data['records'] = []
+        
+        self.player_data['records'].append(record)
+        self.player_data['records'].sort(key=lambda x: x['score'], reverse=True)
+        self.player_data['records'] = self.player_data['records'][:10]
         
         self.save_player_data()
+        
+        # Показать экран Game Over
         self.show_game_over(score)
     
     def show_game_over(self, score):
-        """Показать экран Game Over"""
+        """Экран Game Over"""
         self.root_layout.clear_widgets()
         
         gameover_widget = Widget()
         
-        with gameover_widget.canvas:
-            # Полупрозрачный фон
+        with gameover_widget.canvas.before:
             Color(254/255, 243/255, 199/255, 0.9)
             Rectangle(pos=(0, 0), size=Window.size)
         
@@ -1170,13 +1092,14 @@ class DVDGameApp(App):
             Color(1, 1, 1, 1)
             Rectangle(
                 texture=btn_texture,
-                pos=(Window.width/2 - btn_texture.width/2, btn_y + btn_height/2 - btn_texture.height/2),
+                pos=(btn_x + btn_width/2 - btn_texture.width/2,
+                     btn_y + btn_height/2 - btn_texture.height/2),
                 size=btn_texture.size
             )
         
-        def on_touch_down(instance, touch):
-            if (btn_x <= touch.pos[0] <= btn_x + btn_width and
-                btn_y <= touch.pos[1] <= btn_y + btn_height):
+        def on_touch_down(w, touch):
+            if btn_x <= touch.pos[0] <= btn_x + btn_width and \
+               btn_y <= touch.pos[1] <= btn_y + btn_height:
                 self.start_game()
                 return True
             return False
@@ -1202,19 +1125,19 @@ class DVDGameApp(App):
             Color(*GRAY_DARK)
             Rectangle(
                 texture=btn_texture,
-                pos=(Window.width/2 - btn_texture.width/2, btn_y + btn_height/2 - btn_texture.height/2),
+                pos=(btn_x + btn_width/2 - btn_texture.width/2,
+                     btn_y + btn_height/2 - btn_texture.height/2),
                 size=btn_texture.size
             )
         
-        def on_touch_down(instance, touch):
-            if (btn_x <= touch.pos[0] <= btn_x + btn_width and
-                btn_y <= touch.pos[1] <= btn_y + btn_height):
+        def on_touch_down(w, touch):
+            if btn_x <= touch.pos[0] <= btn_x + btn_width and \
+               btn_y <= touch.pos[1] <= btn_y + btn_height:
                 self.show_menu()
                 return True
             return False
         
         widget.bind(on_touch_down=on_touch_down)
 
-
 if __name__ == '__main__':
-    DVDGameApp().run()
+    DVDScreensaverApp().run()
