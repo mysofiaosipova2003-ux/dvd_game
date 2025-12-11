@@ -1,36 +1,62 @@
 [app]
+
+# Название и пакет
 title = DVD Заставка
 package.name = dvdgame
-package.domain = ru.dvdgame
+package.domain = ru.scranton.dvd
 
+# Исходники
 source.dir = .
-source.include_exts = py,png,jpg,kv,atlas
+source.main = main.py
+# Все нужные файлы для игры
+source.include_exts = py,png,jpg,jpeg,JPG,PNG,kv,atlas,ttf,otf,json,txt,xml,wav,mp3
+version = 1.0
 
-version = 0.1
-requirements = python3,kivy
+# Требования (только Kivy)
+requirements = python3,kivy==2.3.0
 
-[buildozer]
-log_level = 2
+# Иконка (добавьте icon512.png 512x512)
+icon.filename = icon.png
 
-[app:android]
-android.permissions = INTERNET
+# Экран загрузки (DVD стиль)
+presplash.filename = dvd_logo.jpg
+android.presplash_color = #996633
+
+# Ориентация (вертикальная для телефона)
+orientation = portrait
+fullscreen = 0
+
+# Разрешения Android
+android.permissions = INTERNET,VIBRATE
+
+# Версии Android API
 android.api = 33
 android.minapi = 21
-android.ndk = 25b
-android.sdk = 20
-android.gradle_dependencies = 
-android.enable_androidx = True
-android.meta_data = ru.rustore.sdk.AppKey=ВАШ_КЛЮЧ_ОТ_RUSTORE
 
-[app:android]
-# ... существующие настройки ...
+# Автоматически принимать лицензии
+android.accept_sdk_license = True
 
-# ПОДПИСЬ APK ДЛЯ RUSTORE (ОБЯЗАТЕЛЬНО!)
-android.release_artifact = bin/dvdgame-1.0-release.apk
-android.add_src = dvdgame.keystore
+# Архитектуры процессора (современные телефоны)
+android.archs = arm64-v8a
 
-# ДАННЫЕ КЛЮЧА (ВАШИ ПАРОЛИ)
-android.release_keystore = dvdgame.keystore
-android.release_keyalias = dvdgame
-android.release_keystore_password = 123456
-android.release_key_password = 123456
+# Формат сборки
+android.release_artifact = apk
+
+# Бекап
+android.allow_backup = True
+
+# Настройки Python for Android
+p4a.branch = master
+p4a.bootstrap = sdl2
+
+# ВАШИ КЛЮЧИ ПОДПИСИ (из шага 4)
+p4a.release_keystore = dvdgame.keystore
+p4a.release_keyalias = dvdgame
+
+[buildozer]
+
+# Уровень логов
+log_level = 2
+
+# Не предупреждать при запуске от root
+warn_on_root = 0
