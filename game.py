@@ -11,12 +11,12 @@ import json
 import os
 from datetime import datetime
 
-# Константы (фиксированные пиксели)
-CANVAS_WIDTH = 600
-CANVAS_HEIGHT = 450
-BOX_SIZE = 60
-INITIAL_SPEED = 3.0
-CORNER_DANGER_ZONE = 50
+# Константы (базовые размеры)
+CANVAS_WIDTH = 800
+CANVAS_HEIGHT = 600
+BOX_SIZE = 100
+INITIAL_SPEED = 4.0
+CORNER_DANGER_ZONE = 70
 UPDATE_INTERVAL = 1/60  # 60 FPS
 
 # Цвета (в формате 0-1) - только базовые
@@ -46,11 +46,26 @@ CHARACTERS = {
     "Дуайт Шрут": "👨‍🌾",
     "Джим Халперт": "👨",
     "Пэм Бисли": "👩",
-    "Райан Ховард": "🧑‍💻",
+    "Райан Ховард": "🧑",
     "Энди Бернард": "👨‍🎤",
     "Кевин Малоун": "👨‍🍳",
     "Анджела Мартин": "👩‍💼"
 }
+
+def get_scale():
+    """Получить коэффициент масштабирования под размер экрана"""
+    # Базовая ширина для десктопа
+    base_width = 1024
+    scale = min(Window.width / base_width, 1.2)
+    return max(0.6, scale)  # Минимум 0.6, максимум 1.2
+
+def sp(size):
+    """Масштабируемые пиксели для размеров шрифта"""
+    return int(size * get_scale())
+
+def dp(size):
+    """Масштабируемые пиксели для размеров элементов"""
+    return int(size * get_scale())
 
 class GameView(Widget):
     def __init__(self, **kwargs):
@@ -193,7 +208,7 @@ class GameView(Widget):
             
             # Линии текстуры
             Color(*LINE_COLOR)
-            for i in range(0, int(CANVAS_HEIGHT), 20):
+            for i in range(0, int(CANVAS_HEIGHT), 30):
                 Line(points=[self.pos[0], self.pos[1] + i, 
                            self.pos[0] + CANVAS_WIDTH, self.pos[1] + i], width=1)
             
@@ -238,7 +253,7 @@ class GameView(Widget):
             Line(
                 rectangle=(self.pos[0] + self.box_x, self.pos[1] + self.box_y,
                           BOX_SIZE, BOX_SIZE),
-                width=2
+                width=3
             )
         
         # Текст DVD внутри квадрата
@@ -246,7 +261,7 @@ class GameView(Widget):
     
     def draw_text_on_box(self):
         """Отрисовка текста DVD на квадрате"""
-        label = CoreLabel(text='DVD', font_size=28, bold=True)
+        label = CoreLabel(text='DVD', font_size=48, bold=True)
         label.refresh()
         texture = label.texture
         
@@ -347,7 +362,7 @@ class DVDScreensaverApp(App):
         # Заголовок
         title_label = CoreLabel(
             text='DVD ЗАСТАВКА\nФИЛИАЛ СКРЭНТОН',
-            font_size=24,
+            font_size=sp(28),
             bold=True,
             halign='center'
         )
@@ -358,14 +373,14 @@ class DVDScreensaverApp(App):
             Color(*GRAY_DARK)
             Rectangle(
                 texture=title_texture,
-                pos=(Window.width/2 - title_texture.width/2, Window.height - 150),
+                pos=(Window.width/2 - title_texture.width/2, Window.height - dp(150)),
                 size=title_texture.size
             )
         
         # Описание
         desc_label = CoreLabel(
             text='Не дай логотипу DVD достичь углов экрана!\nТапай по логотипу, чтобы изменить его направление.',
-            font_size=12,
+            font_size=sp(14),
             halign='center'
         )
         desc_label.refresh()
@@ -375,17 +390,19 @@ class DVDScreensaverApp(App):
             Color(*GRAY_DARK)
             Rectangle(
                 texture=desc_texture,
-                pos=(Window.width/2 - desc_texture.width/2, Window.height - 230),
+                pos=(Window.width/2 - desc_texture.width/2, Window.height - dp(220)),
                 size=desc_texture.size
             )
     
     def create_info_blocks(self, widget):
         """Создание информационных блоков"""
-        block_width = (Window.width - 80) / 3
-        block_height = 100
-        spacing = 20
-        start_x = 30
-        start_y = Window.height - 380
+        # Адаптивная ширина блоков
+        total_spacing = dp(80)
+        block_width = (Window.width - total_spacing) / 3
+        block_height = dp(100)
+        spacing = dp(20)
+        start_x = dp(30)
+        start_y = Window.height - dp(360)
         
         # Блок Профиль
         profile_x = start_x
@@ -394,11 +411,11 @@ class DVDScreensaverApp(App):
             RoundedRectangle(
                 pos=(profile_x, start_y),
                 size=(block_width, block_height),
-                radius=[10]
+                radius=[dp(10)]
             )
         
         profile_text = f"ПРОФИЛЬ\n{self.player_data['name']}\nИгр: {self.player_data['games_played']}"
-        profile_label = CoreLabel(text=profile_text, font_size=12, bold=True)
+        profile_label = CoreLabel(text=profile_text, font_size=sp(12), bold=True)
         profile_label.refresh()
         profile_texture = profile_label.texture
         
@@ -418,13 +435,13 @@ class DVDScreensaverApp(App):
             RoundedRectangle(
                 pos=(record_x, start_y),
                 size=(block_width, block_height),
-                radius=[10]
+                radius=[dp(10)]
             )
         
         record_text = f"РЕКОРД\n{self.format_time(self.player_data['best_score'])}\nОбщее: {self.format_time(self.player_data['total_time'])}"
         record_label = CoreLabel(
             text=record_text, 
-            font_size=12, 
+            font_size=sp(12), 
             bold=True
         )
         record_label.refresh()
@@ -446,12 +463,12 @@ class DVDScreensaverApp(App):
             RoundedRectangle(
                 pos=(settings_x, start_y),
                 size=(block_width, block_height),
-                radius=[10]
+                radius=[dp(10)]
             )
         
         sound_status = "ВКЛ" if self.player_data['sound_enabled'] else "ВЫКЛ"
         settings_text = f"НАСТРОЙКИ\nЗвук: {sound_status}\nСкорость: {self.player_data['speed']}"
-        settings_label = CoreLabel(text=settings_text, font_size=12, bold=True)
+        settings_label = CoreLabel(text=settings_text, font_size=sp(12), bold=True)
         settings_label.refresh()
         settings_texture = settings_label.texture
         
@@ -520,7 +537,7 @@ class DVDScreensaverApp(App):
             Rectangle(pos=(0, 0), size=Window.size)
         
         # Заголовок
-        title_label = CoreLabel(text='ВЫБОР ПЕРСОНАЖА', font_size=24, bold=True)
+        title_label = CoreLabel(text='ВЫБОР ПЕРСОНАЖА', font_size=sp(28), bold=True)
         title_label.refresh()
         title_texture = title_label.texture
         
@@ -528,16 +545,16 @@ class DVDScreensaverApp(App):
             Color(*GRAY_DARK)
             Rectangle(
                 texture=title_texture,
-                pos=(Window.width/2 - title_texture.width/2, Window.height - 100),
+                pos=(Window.width/2 - title_texture.width/2, Window.height - dp(120)),
                 size=title_texture.size
             )
         
         # Список персонажей (2 колонки)
-        char_width = 250
-        char_height = 60
-        spacing = 15
+        char_width = dp(280)
+        char_height = dp(70)
+        spacing = dp(15)
         start_x = Window.width/2 - char_width - spacing/2
-        start_y = Window.height - 200
+        start_y = Window.height - dp(220)
         
         for i, (character, emoji) in enumerate(CHARACTERS.items()):
             col = i % 2
@@ -559,10 +576,10 @@ class DVDScreensaverApp(App):
                 RoundedRectangle(
                     pos=(char_x, char_y),
                     size=(char_width, char_height),
-                    radius=[10]
+                    radius=[dp(10)]
                 )
             
-            char_label = CoreLabel(text=f"{emoji} {character}", font_size=14, bold=True)
+            char_label = CoreLabel(text=f"{emoji} {character}", font_size=sp(16), bold=True)
             char_label.refresh()
             char_texture = char_label.texture
             
@@ -610,7 +627,7 @@ class DVDScreensaverApp(App):
             Rectangle(pos=(0, 0), size=Window.size)
         
         # Заголовок
-        title_label = CoreLabel(text='НАСТРОЙКИ', font_size=24, bold=True)
+        title_label = CoreLabel(text='НАСТРОЙКИ', font_size=sp(28), bold=True)
         title_label.refresh()
         title_texture = title_label.texture
         
@@ -618,13 +635,13 @@ class DVDScreensaverApp(App):
             Color(*GRAY_DARK)
             Rectangle(
                 texture=title_texture,
-                pos=(Window.width/2 - title_texture.width/2, Window.height - 100),
+                pos=(Window.width/2 - title_texture.width/2, Window.height - dp(120)),
                 size=title_texture.size
             )
         
         # Блок звука
-        sound_y = Window.height - 250
-        sound_label = CoreLabel(text='ЗВУК', font_size=18, bold=True)
+        sound_y = Window.height - dp(250)
+        sound_label = CoreLabel(text='ЗВУК', font_size=sp(22), bold=True)
         sound_label.refresh()
         sound_texture = sound_label.texture
         
@@ -637,10 +654,10 @@ class DVDScreensaverApp(App):
             )
         
         # Кнопки ВКЛ/ВЫКЛ
-        btn_width = 150
-        btn_height = 60
-        btn_spacing = 20
-        btn_y = sound_y - 100
+        btn_width = dp(180)
+        btn_height = dp(70)
+        btn_spacing = dp(20)
+        btn_y = sound_y - dp(120)
         
         # Кнопка ВКЛ
         on_btn_x = Window.width/2 - btn_width - btn_spacing/2
@@ -651,10 +668,10 @@ class DVDScreensaverApp(App):
             RoundedRectangle(
                 pos=(on_btn_x, btn_y),
                 size=(btn_width, btn_height),
-                radius=[10]
+                radius=[dp(10)]
             )
         
-        on_label = CoreLabel(text='ВКЛ', font_size=16, bold=True)
+        on_label = CoreLabel(text='ВКЛ', font_size=sp(18), bold=True)
         on_label.refresh()
         on_texture = on_label.texture
         
@@ -676,10 +693,10 @@ class DVDScreensaverApp(App):
             RoundedRectangle(
                 pos=(off_btn_x, btn_y),
                 size=(btn_width, btn_height),
-                radius=[10]
+                radius=[dp(10)]
             )
         
-        off_label = CoreLabel(text='ВЫКЛ', font_size=16, bold=True)
+        off_label = CoreLabel(text='ВЫКЛ', font_size=sp(18), bold=True)
         off_label.refresh()
         off_texture = off_label.texture
         
@@ -728,7 +745,7 @@ class DVDScreensaverApp(App):
             Rectangle(pos=(0, 0), size=Window.size)
         
         # Заголовок
-        title_label = CoreLabel(text='ТАБЛИЦА РЕКОРДОВ', font_size=24, bold=True)
+        title_label = CoreLabel(text='ТАБЛИЦА РЕКОРДОВ', font_size=sp(28), bold=True)
         title_label.refresh()
         title_texture = title_label.texture
         
@@ -736,7 +753,7 @@ class DVDScreensaverApp(App):
             Color(*GRAY_DARK)
             Rectangle(
                 texture=title_texture,
-                pos=(Window.width/2 - title_texture.width/2, Window.height - 100),
+                pos=(Window.width/2 - title_texture.width/2, Window.height - dp(120)),
                 size=title_texture.size
             )
         
@@ -747,7 +764,7 @@ class DVDScreensaverApp(App):
             # Нет рекордов
             no_records_label = CoreLabel(
                 text='Пока нет рекордов.\nСыграйте первую игру!',
-                font_size=16
+                font_size=sp(18)
             )
             no_records_label.refresh()
             no_records_texture = no_records_label.texture
@@ -761,8 +778,8 @@ class DVDScreensaverApp(App):
                 )
         else:
             # Показываем топ-10
-            start_y = Window.height - 180
-            row_height = 40
+            start_y = Window.height - dp(200)
+            row_height = dp(50)
             
             for i, record in enumerate(records[:10]):
                 record_y = start_y - i * row_height
@@ -771,14 +788,14 @@ class DVDScreensaverApp(App):
                 with records_widget.canvas:
                     Color(1, 1, 1, 0.5)
                     RoundedRectangle(
-                        pos=(50, record_y),
-                        size=(Window.width - 100, row_height - 5),
-                        radius=[5]
+                        pos=(dp(50), record_y),
+                        size=(Window.width - dp(100), row_height - dp(5)),
+                        radius=[dp(8)]
                     )
                 
                 # Текст записи
                 record_text = f"{i+1}. {record['name']} - {self.format_time(record['score'])} - {record['date']}"
-                record_label = CoreLabel(text=record_text, font_size=14)
+                record_label = CoreLabel(text=record_text, font_size=sp(16))
                 record_label.refresh()
                 record_texture = record_label.texture
                 
@@ -786,7 +803,7 @@ class DVDScreensaverApp(App):
                     Color(*GRAY_DARK)
                     Rectangle(
                         texture=record_texture,
-                        pos=(60, record_y + (row_height - record_texture.height)/2),
+                        pos=(dp(60), record_y + (row_height - record_texture.height)/2),
                         size=record_texture.size
                     )
         
@@ -797,16 +814,16 @@ class DVDScreensaverApp(App):
     
     def create_back_button(self, widget):
         """Кнопка назад в меню"""
-        btn_width = 250
-        btn_height = 60
+        btn_width = dp(280)
+        btn_height = dp(70)
         btn_x = Window.width/2 - btn_width/2
-        btn_y = 50
+        btn_y = dp(60)
         
         with widget.canvas:
             Color(*GRAY_DARK)
-            RoundedRectangle(pos=(btn_x, btn_y), size=(btn_width, btn_height), radius=[10])
+            RoundedRectangle(pos=(btn_x, btn_y), size=(btn_width, btn_height), radius=[dp(12)])
         
-        btn_label = CoreLabel(text='◀ НАЗАД', font_size=16, bold=True)
+        btn_label = CoreLabel(text='◀ НАЗАД', font_size=sp(18), bold=True)
         btn_label.refresh()
         btn_texture = btn_label.texture
         
@@ -830,18 +847,18 @@ class DVDScreensaverApp(App):
     
     def create_start_button(self, widget):
         """Создание кнопки старта"""
-        btn_width = 300
-        btn_height = 70
+        btn_width = dp(340)
+        btn_height = dp(80)
         btn_x = Window.width/2 - btn_width/2
-        btn_y = 150
+        btn_y = dp(140)
         
         # Кнопка
         with widget.canvas:
             Color(*GRAY_DARK)
-            RoundedRectangle(pos=(btn_x, btn_y), size=(btn_width, btn_height), radius=[10])
+            RoundedRectangle(pos=(btn_x, btn_y), size=(btn_width, btn_height), radius=[dp(12)])
         
         # Текст кнопки
-        btn_label = CoreLabel(text='▶ НАЧАТЬ ИГРУ', font_size=16, bold=True)
+        btn_label = CoreLabel(text='▶ НАЧАТЬ ИГРУ', font_size=sp(20), bold=True)
         btn_label.refresh()
         btn_texture = btn_label.texture
         
@@ -878,7 +895,7 @@ class DVDScreensaverApp(App):
         
         # Рамка телевизора
         tv_frame = Widget()
-        frame_padding = 30
+        frame_padding = dp(40)
         frame_width = CANVAS_WIDTH + frame_padding * 2
         frame_height = CANVAS_HEIGHT + frame_padding * 2
         frame_x = Window.width/2 - frame_width/2
@@ -888,9 +905,9 @@ class DVDScreensaverApp(App):
             # Внешняя темная рамка
             Color(*TV_FRAME_COLOR)
             RoundedRectangle(
-                pos=(frame_x - 20, frame_y - 20),
-                size=(frame_width + 40, frame_height + 40),
-                radius=[15]
+                pos=(frame_x - dp(30), frame_y - dp(30)),
+                size=(frame_width + dp(60), frame_height + dp(60)),
+                radius=[dp(20)]
             )
             
             # Внутренняя рамка (экран)
@@ -898,7 +915,7 @@ class DVDScreensaverApp(App):
             RoundedRectangle(
                 pos=(frame_x, frame_y),
                 size=(frame_width, frame_height),
-                radius=[10]
+                radius=[dp(15)]
             )
         
         game_container.add_widget(tv_frame)
@@ -931,7 +948,7 @@ class DVDScreensaverApp(App):
         """Создание UI игры"""
         # Счет слева вверху
         score_widget = Widget()
-        score_label = CoreLabel(text='⏱ 0:00', font_size=16, bold=True)
+        score_label = CoreLabel(text='⏱ 0:00', font_size=sp(18), bold=True)
         score_label.refresh()
         self.score_label_texture = score_label.texture
         
@@ -939,14 +956,14 @@ class DVDScreensaverApp(App):
             Color(*GRAY_DARK)
             self.score_rect = Rectangle(
                 texture=self.score_label_texture,
-                pos=(30, Window.height - 80),
+                pos=(dp(30), Window.height - dp(80)),
                 size=self.score_label_texture.size
             )
         container.add_widget(score_widget)
         
         # Лучший счет справа вверху
         best_widget = Widget()
-        best_label = CoreLabel(text=f"🏆 {self.format_time(self.player_data['best_score'])}", font_size=16, bold=True)
+        best_label = CoreLabel(text=f"🏆 {self.format_time(self.player_data['best_score'])}", font_size=sp(18), bold=True)
         best_label.refresh()
         self.best_label_texture = best_label.texture
         
@@ -954,7 +971,7 @@ class DVDScreensaverApp(App):
             Color(*GRAY_DARK)
             self.best_rect = Rectangle(
                 texture=self.best_label_texture,
-                pos=(Window.width - self.best_label_texture.width - 30, Window.height - 80),
+                pos=(Window.width - self.best_label_texture.width - dp(30), Window.height - dp(80)),
                 size=self.best_label_texture.size
             )
         container.add_widget(best_widget)
@@ -962,18 +979,18 @@ class DVDScreensaverApp(App):
     def create_game_buttons(self, container):
         """Создание кнопок паузы и выхода"""
         # Кнопка паузы (слева)
-        pause_btn_width = 150
-        pause_btn_height = 60
-        pause_btn_x = Window.width/2 - pause_btn_width - 10
-        pause_btn_y = 30
+        pause_btn_width = dp(180)
+        pause_btn_height = dp(70)
+        pause_btn_x = Window.width/2 - pause_btn_width - dp(10)
+        pause_btn_y = dp(40)
         
         pause_widget = Widget()
         
         with pause_widget.canvas:
             Color(1, 1, 1, 1)
-            RoundedRectangle(pos=(pause_btn_x, pause_btn_y), size=(pause_btn_width, pause_btn_height), radius=[10])
+            RoundedRectangle(pos=(pause_btn_x, pause_btn_y), size=(pause_btn_width, pause_btn_height), radius=[dp(12)])
         
-        pause_label = CoreLabel(text='⏸ Пауза', font_size=14, bold=True)
+        pause_label = CoreLabel(text='⏸ Пауза', font_size=sp(16), bold=True)
         pause_label.refresh()
         pause_texture = pause_label.texture
         
@@ -997,18 +1014,18 @@ class DVDScreensaverApp(App):
         container.add_widget(pause_widget)
         
         # Кнопка выхода (справа)
-        exit_btn_width = 150
-        exit_btn_height = 60
-        exit_btn_x = Window.width/2 + 10
-        exit_btn_y = 30
+        exit_btn_width = dp(180)
+        exit_btn_height = dp(70)
+        exit_btn_x = Window.width/2 + dp(10)
+        exit_btn_y = dp(40)
         
         exit_widget = Widget()
         
         with exit_widget.canvas:
             Color(0.9, 0.9, 0.9, 1)
-            RoundedRectangle(pos=(exit_btn_x, exit_btn_y), size=(exit_btn_width, exit_btn_height), radius=[10])
+            RoundedRectangle(pos=(exit_btn_x, exit_btn_y), size=(exit_btn_width, exit_btn_height), radius=[dp(12)])
         
-        exit_label = CoreLabel(text='◀ Выйти', font_size=14, bold=True)
+        exit_label = CoreLabel(text='◀ Выйти', font_size=sp(16), bold=True)
         exit_label.refresh()
         exit_texture = exit_label.texture
         
@@ -1039,7 +1056,7 @@ class DVDScreensaverApp(App):
     
     def update_score(self, score):
         """Обновление счета"""
-        score_label = CoreLabel(text=f'⏱ {self.format_time(score)}', font_size=16, bold=True)
+        score_label = CoreLabel(text=f'⏱ {self.format_time(score)}', font_size=sp(18), bold=True)
         score_label.refresh()
         self.score_label_texture = score_label.texture
         self.score_rect.texture = self.score_label_texture
@@ -1084,7 +1101,7 @@ class DVDScreensaverApp(App):
             Rectangle(pos=(0, 0), size=Window.size)
         
         # Заголовок
-        title_label = CoreLabel(text='ИГРА ОКОНЧЕНА', font_size=28, bold=True)
+        title_label = CoreLabel(text='ИГРА ОКОНЧЕНА', font_size=sp(32), bold=True)
         title_label.refresh()
         title_texture = title_label.texture
         
@@ -1092,12 +1109,12 @@ class DVDScreensaverApp(App):
             Color(*GRAY_DARK)
             Rectangle(
                 texture=title_texture,
-                pos=(Window.width/2 - title_texture.width/2, Window.height - 200),
+                pos=(Window.width/2 - title_texture.width/2, Window.height - dp(200)),
                 size=title_texture.size
             )
         
         # Счет
-        score_label = CoreLabel(text=f'Время выживания: {self.format_time(score)}', font_size=20)
+        score_label = CoreLabel(text=f'Время выживания: {self.format_time(score)}', font_size=sp(24))
         score_label.refresh()
         score_texture = score_label.texture
         
@@ -1105,12 +1122,12 @@ class DVDScreensaverApp(App):
             Color(*GRAY_DARK)
             Rectangle(
                 texture=score_texture,
-                pos=(Window.width/2 - score_texture.width/2, Window.height - 300),
+                pos=(Window.width/2 - score_texture.width/2, Window.height - dp(300)),
                 size=score_texture.size
             )
         
         # Лучший счет
-        best_label = CoreLabel(text=f"Лучший рекорд: {self.format_time(self.player_data['best_score'])}", font_size=16)
+        best_label = CoreLabel(text=f"Лучший рекорд: {self.format_time(self.player_data['best_score'])}", font_size=sp(18))
         best_label.refresh()
         best_texture = best_label.texture
         
@@ -1118,7 +1135,7 @@ class DVDScreensaverApp(App):
             Color(*GRAY_DARK)
             Rectangle(
                 texture=best_texture,
-                pos=(Window.width/2 - best_texture.width/2, Window.height - 360),
+                pos=(Window.width/2 - best_texture.width/2, Window.height - dp(360)),
                 size=best_texture.size
             )
         
@@ -1132,16 +1149,16 @@ class DVDScreensaverApp(App):
     
     def create_restart_button(self, widget):
         """Кнопка рестарта"""
-        btn_width = 300
-        btn_height = 70
+        btn_width = dp(340)
+        btn_height = dp(80)
         btn_x = Window.width/2 - btn_width/2
-        btn_y = 200
+        btn_y = dp(220)
         
         with widget.canvas:
             Color(*GRAY_DARK)
-            RoundedRectangle(pos=(btn_x, btn_y), size=(btn_width, btn_height), radius=[10])
+            RoundedRectangle(pos=(btn_x, btn_y), size=(btn_width, btn_height), radius=[dp(12)])
         
-        btn_label = CoreLabel(text='🔄 ИГРАТЬ СНОВА', font_size=16, bold=True)
+        btn_label = CoreLabel(text='🔄 ИГРАТЬ СНОВА', font_size=sp(20), bold=True)
         btn_label.refresh()
         btn_texture = btn_label.texture
         
@@ -1165,16 +1182,16 @@ class DVDScreensaverApp(App):
     
     def create_menu_button(self, widget):
         """Кнопка меню"""
-        btn_width = 300
-        btn_height = 60
+        btn_width = dp(340)
+        btn_height = dp(70)
         btn_x = Window.width/2 - btn_width/2
-        btn_y = 120
+        btn_y = dp(130)
         
         with widget.canvas:
             Color(1, 1, 1, 1)
-            RoundedRectangle(pos=(btn_x, btn_y), size=(btn_width, btn_height), radius=[10])
+            RoundedRectangle(pos=(btn_x, btn_y), size=(btn_width, btn_height), radius=[dp(12)])
         
-        btn_label = CoreLabel(text='Главное меню', font_size=14)
+        btn_label = CoreLabel(text='Главное меню', font_size=sp(16))
         btn_label.refresh()
         btn_texture = btn_label.texture
         
